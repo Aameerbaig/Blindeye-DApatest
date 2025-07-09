@@ -1,0 +1,324 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlindEye dApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.10.0/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      background: linear-gradient(to right, #2c003e, #000000);
+      color: #f0e6ff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 2.5rem;
+      color: #a855f7;
+    }
+    .logo {
+      width: 120px;
+      height: auto;
+      margin-bottom: 1rem;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2rem;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      margin: 0.5rem 0;
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: none;
+      font-size: 1rem;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      background-color: #9333ea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    #status {
+      margin: 1rem 0;
+      font-size: 0.9rem;
+      color: #a3e635;
+    }
+  </style>
+</head>
+<body>
+  <img class="logo" src="blindeye_logo_light.png" alt="BlindEye Logo">
+  <h1>BlindEye dApp</h1>
+  <div class="container">
+    <div id="status">Wallet not connected</div>
+    <button onclick="connectWallet()">Connect Wallet</button><input type="text" id="secret" placeholder="Enter secret" />
+<input type="text" id="recipient" placeholder="Enter recipient address" />
+<button onclick="generateHash()">Generate Hash</button>
+<div id="hashOutput"></div>
+
+<input type="text" id="depositHash" placeholder="Paste hash here to deposit ETH" />
+<input type="text" id="depositAmount" placeholder="Amount in ETH" />
+<button onclick="depositETH()">Deposit</button>
+
+<input type="text" id="claimSecret" placeholder="Enter secret to claim ETH" />
+<button onclick="claimETH()">Claim</button>
+
+  </div><script>
+  const CONTRACT_ADDRESS = "0x48984418aFD2584fB6D82B11E5B5D1f377c4Aa15";
+  const CONTRACT_ABI = [
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "recipient",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "Claim",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "sender",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "hash",
+				"type": "bytes32"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "Deposit",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "newFeeBasisPoints",
+				"type": "uint256"
+			}
+		],
+		"name": "FeeUpdated",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_secret",
+				"type": "string"
+			}
+		],
+		"name": "claim",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_hash",
+				"type": "bytes32"
+			}
+		],
+		"name": "deposit",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			}
+		],
+		"name": "emergencyWithdraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_feeBasisPoints",
+				"type": "uint256"
+			}
+		],
+		"name": "setFee",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"stateMutability": "payable",
+		"type": "receive"
+	},
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"name": "deposits",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "feeBasisPoints",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+  let signer;
+  let contract;
+
+  async function connectWallet() {
+    if (typeof window.ethereum !== 'undefined') {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      const address = await signer.getAddress();
+      document.getElementById("status").innerText = "Connected: " + address;
+    } else {
+      alert("MetaMask not detected");
+    }
+  }
+
+  async function generateHash() {
+    const secret = document.getElementById("secret").value;
+    const recipient = document.getElementById("recipient").value;
+    if (!secret || !recipient) return alert("Enter secret and recipient address");
+
+    const encoded = ethers.AbiCoder.defaultAbiCoder().encode(["string", "address"], [secret, recipient]);
+    const hash = ethers.keccak256(encoded);
+    document.getElementById("hashOutput").innerText = `Hash: ${hash}`;
+  }
+
+  async function depositETH() {
+    const hash = document.getElementById("depositHash").value;
+    const amount = document.getElementById("depositAmount").value;
+    if (!hash || !amount) return alert("Provide both hash and amount");
+
+    try {
+      const tx = await contract.deposit(hash, { value: ethers.parseEther(amount) });
+      await tx.wait();
+      alert("Deposit successful");
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  }
+
+  async function claimETH() {
+    const secret = document.getElementById("claimSecret").value;
+    if (!secret) return alert("Enter secret to claim ETH");
+
+    try {
+      const tx = await contract.claim(secret);
+      await tx.wait();
+      alert("Claim successful");
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  }
+
+    async function generateHash() {
+      const secret = document.getElementById("secret").value;
+      const recipient = document.getElementById("recipient").value;
+      if (!secret || !recipient) return alert("Enter secret and recipient address");
+
+      const hash = ethers.keccak256(ethers.solidityPacked(["string", "address"], [secret, recipient]));
+      document.getElementById("hashOutput").innerText = `Hash: ${hash}`;
+    }
+
+    async function depositETH() {
+      const hash = document.getElementById("depositHash").value;
+      const amount = document.getElementById("depositAmount").value;
+      if (!hash || !amount) return alert("Provide both hash and amount");
+
+      const tx = await contract.deposit(hash, { value: ethers.parseEther(amount) });
+      await tx.wait();
+      alert("Deposit successful");
+    }
+
+    async function claimETH() {
+      const secret = document.getElementById("claimSecret").value;
+      if (!secret) return alert("Enter secret to claim ETH");
+
+      const tx = await contract.claim(secret);
+      await tx.wait();
+      alert("Claimed successfully");
+    }
+  </script></body>
+</html>
